@@ -6747,6 +6747,18 @@ var _require = __webpack_require__(/*! ../helpers */ "../helpers/helpers.js"),
   addErrorContext = _require.addErrorContext;
 var _require2 = __webpack_require__(/*! ../helpers/micromark.cjs */ "../helpers/micromark.cjs"),
   filterByTypes = _require2.filterByTypes;
+var whitespaceTypes = new Set(["linePrefix", "whitespace"]);
+var ignoreWhitespace = function ignoreWhitespace(tokens) {
+  return tokens.filter(function (token) {
+    return !whitespaceTypes.has(token.type);
+  });
+};
+var firstOrUndefined = function firstOrUndefined(items) {
+  return items[0];
+};
+var lastOrUndefined = function lastOrUndefined(items) {
+  return items[items.length - 1];
+};
 module.exports = {
   "names": ["MD055", "table-missing-border"],
   "description": "Table is missing leading or trailing pipe character",
@@ -6758,19 +6770,25 @@ module.exports = {
     try {
       for (_iterator.s(); !(_step = _iterator.n()).done;) {
         var table = _step.value;
-        var rows = filterByTypes(table.children, ["tableRow", "tableDelimiterRow"]);
+        var rows = filterByTypes(table.children, ["tableDelimiterRow", "tableRow"]);
         var _iterator2 = _createForOfIteratorHelper(rows),
           _step2;
         try {
           for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
             var row = _step2.value;
-            var startLine = row.startLine,
-              text = row.text;
-            if (!text.startsWith("|")) {
-              addErrorContext(onError, startLine, text, true);
+            var firstCell = firstOrUndefined(row.children);
+            if (firstCell) {
+              var leadingToken = firstOrUndefined(ignoreWhitespace(firstCell.children));
+              if (leadingToken && leadingToken.type !== "tableCellDivider") {
+                addErrorContext(onError, firstCell.startLine, row.text.trim(), true);
+              }
             }
-            if (!text.endsWith("|")) {
-              addErrorContext(onError, startLine, text, false, true);
+            var lastCell = lastOrUndefined(row.children);
+            if (lastCell) {
+              var trailingToken = lastOrUndefined(ignoreWhitespace(lastCell.children));
+              if (trailingToken && trailingToken.type !== "tableCellDivider") {
+                addErrorContext(onError, lastCell.startLine, row.text.trim(), false, true);
+              }
             }
           }
         } catch (err) {
